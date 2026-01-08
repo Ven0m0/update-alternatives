@@ -8,3 +8,14 @@ clap = { version = "4.5.54", features = ["cargo"] }
 nix = { version = "0.30.1", features = ["user"] }
 serde_derive = "1.0.228"
 serde_json = "1.0.149"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+split-debuginfo = "off"
+
+[profile.dev]
+debug = 0
+split-debuginfo = "packed"
