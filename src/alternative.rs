@@ -26,6 +26,8 @@
 
 extern crate std;
 
+extern crate serde;
+
 #[derive(Deserialize, Serialize)]
 pub struct Alternative {
     target: std::path::PathBuf,

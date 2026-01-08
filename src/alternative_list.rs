@@ -26,6 +26,7 @@
 
 extern crate std;
 
+extern crate serde;
 extern crate serde_json;
 
 use super::alternative::Alternative;
