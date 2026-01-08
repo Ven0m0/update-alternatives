@@ -17,7 +17,7 @@
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY 
+// ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
 // DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 // (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 // LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -57,9 +57,7 @@ fn escalate_privileges() -> std::io::Result<()> {
                         let code = status.code().unwrap_or(1);
                         std::process::exit(code);
                     }
-                    Err(_suderr) => {
-                        Err(pkerr)
-                    }
+                    Err(_suderr) => Err(pkerr),
                 }
             }
         }
@@ -82,13 +80,16 @@ fn main() {
     let euid = nix::unistd::geteuid();
     if !euid.is_root() && !use_gui_flag {
         if let Err(e) = escalate_privileges() {
-            eprintln!("update-alternatives: must be run as root (auto-escalation failed: {})", e);
+            eprintln!(
+                "update-alternatives: must be run as root (auto-escalation failed: {})",
+                e
+            );
             std::process::exit(1);
         } else {
             unreachable!("escalate_privileges should not return Ok(()) in non-root context");
         }
     }
-    
+
     let matches = app().get_matches();
 
     let mut db = match read_db("/etc/alternatives") {
@@ -115,18 +116,22 @@ fn main() {
     }
 }
 
-fn read_db<P: std::convert::AsRef<std::path::Path>>(path: P)
--> std::io::Result<AlternativeDb> {
+fn read_db<P: std::convert::AsRef<std::path::Path>>(path: P) -> std::io::Result<AlternativeDb> {
     match AlternativeDb::from_folder(path) {
         Ok(d) => {
-            println!("update-alternatives: parsed {} alternatives",
-                     d.num_alternatives());
+            println!(
+                "update-alternatives: parsed {} alternatives",
+                d.num_alternatives()
+            );
 
             Ok(d)
-        },
+        }
         Err(e) => {
-            eprintln!("update-alternatives: could not read folder \
-                      /etc/alternatives: {}", e);
+            eprintln!(
+                "update-alternatives: could not read folder \
+                      /etc/alternatives: {}",
+                e
+            );
 
             Err(e)
         }
@@ -143,7 +148,7 @@ fn list(db: &AlternativeDb, matches: &clap::ArgMatches) -> bool {
     match db.alternatives(name) {
         Some(alternatives) => {
             print!("update-alternatives: {}", alternatives);
-        },
+        }
         None => {
             eprintln!("update-alternatives: no alternatives found for {}", name);
         }
@@ -172,16 +177,22 @@ fn add(db: &mut AlternativeDb, matches: &clap::ArgMatches) -> bool {
     let weight: i32 = match weight_str.parse() {
         Ok(w) => w,
         Err(e) => {
-            eprintln!("update-alternatives: could not parse {} as \
-                      weight: {}", weight_str, e);
+            eprintln!(
+                "update-alternatives: could not parse {} as \
+                      weight: {}",
+                weight_str, e
+            );
 
             std::process::exit(1);
-        },
+        }
     };
 
     if db.add_alternative(name, Alternative::from_parts(target, weight)) {
-        println!("update-alternatives: added alternative {} for {} with \
-                 priority {}", target, name, weight);
+        println!(
+            "update-alternatives: added alternative {} for {} with \
+                 priority {}",
+            target, name, weight
+        );
 
         return true;
     }
@@ -202,8 +213,10 @@ fn remove(db: &mut AlternativeDb, matches: &clap::ArgMatches) -> bool {
         .unwrap();
 
     if db.remove_alternative(name, target) {
-        println!("update-alternatives: removed alternative {} for {}",
-                 target, name);
+        println!(
+            "update-alternatives: removed alternative {} for {}",
+            target, name
+        );
 
         return true;
     }
@@ -213,8 +226,11 @@ fn remove(db: &mut AlternativeDb, matches: &clap::ArgMatches) -> bool {
 
 fn commit(db: &AlternativeDb) -> std::io::Result<()> {
     if let Err(e) = db.write_out("/etc/alternatives") {
-        eprintln!("update-alternatives: could not commit changes to \
-                  /etc/alternatives: {}", e);
+        eprintln!(
+            "update-alternatives: could not commit changes to \
+                  /etc/alternatives: {}",
+            e
+        );
 
         Err(e)
     } else if let Err(e) = db.write_links() {
@@ -243,8 +259,12 @@ fn run_gui(db: &mut AlternativeDb) -> bool {
     }
 
     fn run_privileged(args: &[&str]) -> std::io::Result<std::process::ExitStatus> {
-        let exe = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("update-alternatives"));
-        Command::new("pkexec").arg(&exe).args(args).status()
+        let exe = std::env::current_exe()
+            .unwrap_or_else(|_| std::path::PathBuf::from("update-alternatives"));
+        Command::new("pkexec")
+            .arg(&exe)
+            .args(args)
+            .status()
             .or_else(|_| Command::new("sudo").arg(&exe).args(args).status())
     }
 
@@ -259,91 +279,367 @@ fn run_gui(db: &mut AlternativeDb) -> bool {
         }
         rows.sort_by(|a, b| a.0.cmp(&b.0));
 
-        let menu_out = match Command::new("zenity").args([
-            "--list", "--title", "update-alternatives",
-            "--text", "Choose an action",
-            "--width", "500", "--height", "300",
-            "--column", "Action",
-            "Add", "Remove", "Adjust priority", "Sync", "Close",
-        ]).output() {
+        let menu_out = match Command::new("zenity")
+            .args([
+                "--list",
+                "--title",
+                "update-alternatives",
+                "--text",
+                "Choose an action",
+                "--width",
+                "500",
+                "--height",
+                "300",
+                "--column",
+                "Action",
+                "Add",
+                "Remove",
+                "Adjust priority",
+                "Sync",
+                "Close",
+            ])
+            .output()
+        {
             Ok(o) => o,
-            Err(e) => { eprintln!("update-alternatives: failed to launch zenity: {}", e); return false; }
+            Err(e) => {
+                eprintln!("update-alternatives: failed to launch zenity: {}", e);
+                return false;
+            }
         };
         if !menu_out.status.success() {
-            return false; 
+            return false;
         }
         let choice = String::from_utf8_lossy(&menu_out.stdout).trim().to_string();
         match choice.as_str() {
             "Close" => return false,
-            "Sync" => {
-                match run_privileged(&["sync"]) {
-                    Ok(s) if s.success() => { let _ = Command::new("zenity").args(["--info","--text","Symlinks were rewritten.","--title","update-alternatives"]).status(); }
-                    Ok(s) => { let _ = Command::new("zenity").args(["--error","--text", &format!("Sync failed (exit {:?}).", s.code()), "--title","update-alternatives"]).status(); }
-                    Err(e) => { let _ = Command::new("zenity").args(["--error","--text", &format!("Sync failed: {}", e), "--title","update-alternatives"]).status(); }
+            "Sync" => match run_privileged(&["sync"]) {
+                Ok(s) if s.success() => {
+                    let _ = Command::new("zenity")
+                        .args([
+                            "--info",
+                            "--text",
+                            "Symlinks were rewritten.",
+                            "--title",
+                            "update-alternatives",
+                        ])
+                        .status();
                 }
-            }
+                Ok(s) => {
+                    let _ = Command::new("zenity")
+                        .args([
+                            "--error",
+                            "--text",
+                            &format!("Sync failed (exit {:?}).", s.code()),
+                            "--title",
+                            "update-alternatives",
+                        ])
+                        .status();
+                }
+                Err(e) => {
+                    let _ = Command::new("zenity")
+                        .args([
+                            "--error",
+                            "--text",
+                            &format!("Sync failed: {}", e),
+                            "--title",
+                            "update-alternatives",
+                        ])
+                        .status();
+                }
+            },
             "Add" => {
-                let form = match Command::new("zenity").args([
-                    "--forms", "--title", "Add alternative",
-                    "--text", "Enter name, target and priority",
-                    "--add-entry", "Name",
-                    "--add-entry", "Target path",
-                    "--add-entry", "Priority (integer)",
-                    "--width", "500",
-                ]).output() { Ok(o) => o, Err(e) => { eprintln!("zenity error: {}", e); return false; } };
-                if !form.status.success() { continue; }
+                let form = match Command::new("zenity")
+                    .args([
+                        "--forms",
+                        "--title",
+                        "Add alternative",
+                        "--text",
+                        "Enter name, target and priority",
+                        "--add-entry",
+                        "Name",
+                        "--add-entry",
+                        "Target path",
+                        "--add-entry",
+                        "Priority (integer)",
+                        "--width",
+                        "500",
+                    ])
+                    .output()
+                {
+                    Ok(o) => o,
+                    Err(e) => {
+                        eprintln!("zenity error: {}", e);
+                        return false;
+                    }
+                };
+                if !form.status.success() {
+                    continue;
+                }
                 let resp = String::from_utf8_lossy(&form.stdout).trim().to_string();
                 let mut parts = resp.split('|');
                 let name = parts.next().unwrap_or("").trim();
                 let target = parts.next().unwrap_or("").trim();
                 let weight = parts.next().unwrap_or("").trim();
-                if name.is_empty() || target.is_empty() || weight.is_empty() { let _=Command::new("zenity").args(["--error","--text","All fields are required.","--title","update-alternatives"]).status(); continue; }
-                if weight.parse::<i32>().is_err() { let _=Command::new("zenity").args(["--error","--text","Priority must be an integer.","--title","update-alternatives"]).status(); continue; }
-                match run_privileged(&["add","-n", name, "-t", target, "-w", weight]) {
-                    Ok(s) if s.success() => { let _=Command::new("zenity").args(["--info","--text","Alternative added/updated.","--title","update-alternatives"]).status(); }
-                    Ok(s) => { let _=Command::new("zenity").args(["--error","--text", &format!("Add failed (exit {:?}).", s.code()), "--title","update-alternatives"]).status(); }
-                    Err(e) => { let _=Command::new("zenity").args(["--error","--text", &format!("Add failed: {}", e), "--title","update-alternatives"]).status(); }
+                if name.is_empty() || target.is_empty() || weight.is_empty() {
+                    let _ = Command::new("zenity")
+                        .args([
+                            "--error",
+                            "--text",
+                            "All fields are required.",
+                            "--title",
+                            "update-alternatives",
+                        ])
+                        .status();
+                    continue;
+                }
+                if weight.parse::<i32>().is_err() {
+                    let _ = Command::new("zenity")
+                        .args([
+                            "--error",
+                            "--text",
+                            "Priority must be an integer.",
+                            "--title",
+                            "update-alternatives",
+                        ])
+                        .status();
+                    continue;
+                }
+                match run_privileged(&["add", "-n", name, "-t", target, "-w", weight]) {
+                    Ok(s) if s.success() => {
+                        let _ = Command::new("zenity")
+                            .args([
+                                "--info",
+                                "--text",
+                                "Alternative added/updated.",
+                                "--title",
+                                "update-alternatives",
+                            ])
+                            .status();
+                    }
+                    Ok(s) => {
+                        let _ = Command::new("zenity")
+                            .args([
+                                "--error",
+                                "--text",
+                                &format!("Add failed (exit {:?}).", s.code()),
+                                "--title",
+                                "update-alternatives",
+                            ])
+                            .status();
+                    }
+                    Err(e) => {
+                        let _ = Command::new("zenity")
+                            .args([
+                                "--error",
+                                "--text",
+                                &format!("Add failed: {}", e),
+                                "--title",
+                                "update-alternatives",
+                            ])
+                            .status();
+                    }
                 }
             }
             "Remove" | "Adjust priority" => {
-                if rows.is_empty() { let _=Command::new("zenity").args(["--warning","--text","No alternatives available.","--title","update-alternatives"]).status(); continue; }
-                let mut name_list_args = vec!["--list","--title","Select name","--column","Name"]; 
-                for (n, _) in &rows { name_list_args.push(n); }
-                let name_out = match Command::new("zenity").args(&name_list_args).output() { Ok(o)=>o, Err(e)=>{ eprintln!("zenity error: {}", e); return false; } };
-                if !name_out.status.success() { continue; }
+                if rows.is_empty() {
+                    let _ = Command::new("zenity")
+                        .args([
+                            "--warning",
+                            "--text",
+                            "No alternatives available.",
+                            "--title",
+                            "update-alternatives",
+                        ])
+                        .status();
+                    continue;
+                }
+                let mut name_list_args =
+                    vec!["--list", "--title", "Select name", "--column", "Name"];
+                for (n, _) in &rows {
+                    name_list_args.push(n);
+                }
+                let name_out = match Command::new("zenity").args(&name_list_args).output() {
+                    Ok(o) => o,
+                    Err(e) => {
+                        eprintln!("zenity error: {}", e);
+                        return false;
+                    }
+                };
+                if !name_out.status.success() {
+                    continue;
+                }
                 let selected_name = String::from_utf8_lossy(&name_out.stdout).trim().to_string();
-                if selected_name.is_empty() { continue; }
+                if selected_name.is_empty() {
+                    continue;
+                }
                 let mut alt_rows: Vec<(String, i32)> = Vec::new();
-                if let Some(list) = db.alternatives(&selected_name) { for a in list.links() { alt_rows.push((a.target().display().to_string(), a.priority())); } }
-                if alt_rows.is_empty() { let _=Command::new("zenity").args(["--warning","--text","No targets for this name.","--title","update-alternatives"]).status(); continue; }
-                let mut alt_args: Vec<String> = vec!["--list".into(),"--title".into(),format!("{}: select target", selected_name),"--width".into(),"700".into(),"--column".into(),"Target".into(),"--column".into(),"Priority".into()];
-                for (t, w) in &alt_rows { alt_args.push(t.clone()); alt_args.push(w.to_string()); }
-                let alt_out = match Command::new("zenity").args(&alt_args).output() { Ok(o)=>o, Err(e)=>{ eprintln!("zenity error: {}", e); return false; } };
-                if !alt_out.status.success() { continue; }
+                if let Some(list) = db.alternatives(&selected_name) {
+                    for a in list.links() {
+                        alt_rows.push((a.target().display().to_string(), a.priority()));
+                    }
+                }
+                if alt_rows.is_empty() {
+                    let _ = Command::new("zenity")
+                        .args([
+                            "--warning",
+                            "--text",
+                            "No targets for this name.",
+                            "--title",
+                            "update-alternatives",
+                        ])
+                        .status();
+                    continue;
+                }
+                let mut alt_args: Vec<String> = vec![
+                    "--list".into(),
+                    "--title".into(),
+                    format!("{}: select target", selected_name),
+                    "--width".into(),
+                    "700".into(),
+                    "--column".into(),
+                    "Target".into(),
+                    "--column".into(),
+                    "Priority".into(),
+                ];
+                for (t, w) in &alt_rows {
+                    alt_args.push(t.clone());
+                    alt_args.push(w.to_string());
+                }
+                let alt_out = match Command::new("zenity").args(&alt_args).output() {
+                    Ok(o) => o,
+                    Err(e) => {
+                        eprintln!("zenity error: {}", e);
+                        return false;
+                    }
+                };
+                if !alt_out.status.success() {
+                    continue;
+                }
                 let selected_target = String::from_utf8_lossy(&alt_out.stdout).trim().to_string();
-                if selected_target.is_empty() { continue; }
+                if selected_target.is_empty() {
+                    continue;
+                }
                 if choice == "Remove" {
-                    match run_privileged(&["remove","-n", &selected_name, "-t", &selected_target]) {
-                        Ok(s) if s.success() => { let _=Command::new("zenity").args(["--info","--text","Alternative removed.","--title","update-alternatives"]).status(); }
-                        Ok(s) => { let _=Command::new("zenity").args(["--error","--text", &format!("Remove failed (exit {:?}).", s.code()), "--title","update-alternatives"]).status(); }
-                        Err(e) => { let _=Command::new("zenity").args(["--error","--text", &format!("Remove failed: {}", e), "--title","update-alternatives"]).status(); }
+                    match run_privileged(&["remove", "-n", &selected_name, "-t", &selected_target])
+                    {
+                        Ok(s) if s.success() => {
+                            let _ = Command::new("zenity")
+                                .args([
+                                    "--info",
+                                    "--text",
+                                    "Alternative removed.",
+                                    "--title",
+                                    "update-alternatives",
+                                ])
+                                .status();
+                        }
+                        Ok(s) => {
+                            let _ = Command::new("zenity")
+                                .args([
+                                    "--error",
+                                    "--text",
+                                    &format!("Remove failed (exit {:?}).", s.code()),
+                                    "--title",
+                                    "update-alternatives",
+                                ])
+                                .status();
+                        }
+                        Err(e) => {
+                            let _ = Command::new("zenity")
+                                .args([
+                                    "--error",
+                                    "--text",
+                                    &format!("Remove failed: {}", e),
+                                    "--title",
+                                    "update-alternatives",
+                                ])
+                                .status();
+                        }
                     }
                 } else {
-                    let pr_out = match Command::new("zenity").args(["--entry","--title","Set priority","--text","Enter new priority (integer)"]).output() { Ok(o)=>o, Err(e)=>{ eprintln!("zenity error: {}", e); return false; } };
-                    if !pr_out.status.success() { continue; }
+                    let pr_out = match Command::new("zenity")
+                        .args([
+                            "--entry",
+                            "--title",
+                            "Set priority",
+                            "--text",
+                            "Enter new priority (integer)",
+                        ])
+                        .output()
+                    {
+                        Ok(o) => o,
+                        Err(e) => {
+                            eprintln!("zenity error: {}", e);
+                            return false;
+                        }
+                    };
+                    if !pr_out.status.success() {
+                        continue;
+                    }
                     let new_w = String::from_utf8_lossy(&pr_out.stdout).trim().to_string();
-                    if new_w.parse::<i32>().is_err() { let _=Command::new("zenity").args(["--error","--text","Priority must be an integer.","--title","update-alternatives"]).status(); continue; }
-                    match run_privileged(&["add","-n", &selected_name, "-t", &selected_target, "-w", &new_w]) {
-                        Ok(s) if s.success() => { let _=Command::new("zenity").args(["--info","--text","Priority updated.","--title","update-alternatives"]).status(); }
-                        Ok(s) => { let _=Command::new("zenity").args(["--error","--text", &format!("Update failed (exit {:?}).", s.code()), "--title","update-alternatives"]).status(); }
-                        Err(e) => { let _=Command::new("zenity").args(["--error","--text", &format!("Update failed: {}", e), "--title","update-alternatives"]).status(); }
+                    if new_w.parse::<i32>().is_err() {
+                        let _ = Command::new("zenity")
+                            .args([
+                                "--error",
+                                "--text",
+                                "Priority must be an integer.",
+                                "--title",
+                                "update-alternatives",
+                            ])
+                            .status();
+                        continue;
+                    }
+                    match run_privileged(&[
+                        "add",
+                        "-n",
+                        &selected_name,
+                        "-t",
+                        &selected_target,
+                        "-w",
+                        &new_w,
+                    ]) {
+                        Ok(s) if s.success() => {
+                            let _ = Command::new("zenity")
+                                .args([
+                                    "--info",
+                                    "--text",
+                                    "Priority updated.",
+                                    "--title",
+                                    "update-alternatives",
+                                ])
+                                .status();
+                        }
+                        Ok(s) => {
+                            let _ = Command::new("zenity")
+                                .args([
+                                    "--error",
+                                    "--text",
+                                    &format!("Update failed (exit {:?}).", s.code()),
+                                    "--title",
+                                    "update-alternatives",
+                                ])
+                                .status();
+                        }
+                        Err(e) => {
+                            let _ = Command::new("zenity")
+                                .args([
+                                    "--error",
+                                    "--text",
+                                    &format!("Update failed: {}", e),
+                                    "--title",
+                                    "update-alternatives",
+                                ])
+                                .status();
+                        }
                     }
                 }
             }
-            _ => { }
+            _ => {}
         }
 
-        if let Ok(new_db) = read_db("/etc/alternatives") { *db = new_db; }
+        if let Ok(new_db) = read_db("/etc/alternatives") {
+            *db = new_db;
+        }
     }
 }
 
@@ -356,7 +652,6 @@ fn sync(db: &AlternativeDb) -> bool {
     false
 }
 
-
 fn app() -> clap::Command {
     use clap::{Arg, Command};
     Command::new("update-alternatives")
@@ -367,7 +662,7 @@ fn app() -> clap::Command {
             Arg::new("gui")
                 .help("Launch a simple graphical interface for listing and syncing alternatives")
                 .long("gui")
-                .action(clap::ArgAction::SetTrue)
+                .action(clap::ArgAction::SetTrue),
         )
         .subcommand(
             Command::new("list")
@@ -495,8 +790,7 @@ fn app() -> clap::Command {
         .propagate_version(true)
 }
 
-static ABOUT: &'static str =
-    "Manages symlinks to be placed in /usr/local/bin. Data is stored in \
+static ABOUT: &'static str = "Manages symlinks to be placed in /usr/local/bin. Data is stored in \
     /etc/alternatives for persistence between invocations. Provides similar \
     functionality to Debian's update-alternatives, but with a slightly \
     different interface. Alternatives are selected by comparing their assigned \
@@ -504,8 +798,7 @@ static ABOUT: &'static str =
     Example usage to use 'vim' to open 'nvim'': \
     \nsudo update-alternatives add -n vim -t /usr/bin/nvim -w 100 ";
 
-static LIST_ABOUT: &'static str =
-    "Lists all alternatives for <NAME> and their assigned priority.";
+static LIST_ABOUT: &'static str = "Lists all alternatives for <NAME> and their assigned priority.";
 
 static ADD_ABOUT: &'static str =
     "Adds or modifies an alternative for <NAME> that points to <TARGET> with \

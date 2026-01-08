@@ -16,7 +16,7 @@
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY 
+// ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
 // DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 // (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 // LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -31,17 +31,18 @@ extern crate serde_json;
 use super::alternative::Alternative;
 use super::filesystem;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct AlternativeList {
     path: std::path::PathBuf,
     links: Vec<Alternative>,
 }
 
 impl AlternativeList {
-    pub fn new<P: std::convert::AsRef<std::path::Path>>(path: P)
-        -> AlternativeList {
-        AlternativeList{ path: std::path::PathBuf::from(path.as_ref()),
-                         links: Vec::new() }
+    pub fn new<P: std::convert::AsRef<std::path::Path>>(path: P) -> AlternativeList {
+        AlternativeList {
+            path: std::path::PathBuf::from(path.as_ref()),
+            links: Vec::new(),
+        }
     }
 
     pub fn num_links(&self) -> usize {
@@ -49,7 +50,10 @@ impl AlternativeList {
     }
 
     pub fn current_target(&self) -> Option<&std::path::Path> {
-        self.links.iter().max_by_key(|l| l.priority()).map(|l| l.target())
+        self.links
+            .iter()
+            .max_by_key(|l| l.priority())
+            .map(|l| l.target())
     }
 
     pub fn links(&self) -> &[Alternative] {
@@ -57,9 +61,7 @@ impl AlternativeList {
     }
 
     pub fn make_symlink(&self) -> std::io::Result<bool> {
-        let (target, priority) = match self.links
-                                           .iter()
-                                           .max_by_key(|l| l.priority()) {
+        let (target, priority) = match self.links.iter().max_by_key(|l| l.priority()) {
             Some(l) => (l.target(), l.priority()),
             None => return Ok(false),
         };
@@ -82,8 +84,13 @@ impl AlternativeList {
             return Err(e);
         }
 
-        println!("update-alternatives: created symlink from {} to {} with \
-                 priority {}", self.path.display(), target.display(), priority);
+        println!(
+            "update-alternatives: created symlink from {} to {} with \
+                 priority {}",
+            self.path.display(),
+            target.display(),
+            priority
+        );
         Ok(true)
     }
 
@@ -95,7 +102,7 @@ impl AlternativeList {
                 if self.links[i].priority() == to_add.priority() {
                     return false;
                 }
-                
+
                 self.links[i] = to_add;
 
                 true
@@ -109,13 +116,12 @@ impl AlternativeList {
     }
 
     pub fn remove_alternative<P: std::convert::AsRef<std::path::Path>>(
-        &mut self, target: P
+        &mut self,
+        target: P,
     ) -> bool {
         let target_path = target.as_ref();
 
-        if let Some(p) = self.links
-                             .iter()
-                             .position(|a| a.target() == target_path) {
+        if let Some(p) = self.links.iter().position(|a| a.target() == target_path) {
             self.links.remove(p);
 
             return true;
@@ -127,8 +133,7 @@ impl AlternativeList {
 
 impl std::fmt::Display for AlternativeList {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if let Err(e) = writeln!(formatter, "alternatives for {}:",
-                                 self.path.display()) {
+        if let Err(e) = writeln!(formatter, "alternatives for {}:", self.path.display()) {
             return Err(e);
         }
 

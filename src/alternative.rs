@@ -16,7 +16,7 @@
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY 
+// ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
 // DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 // (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 // LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -26,7 +26,7 @@
 
 extern crate std;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct Alternative {
     target: std::path::PathBuf,
     priority: i32,
@@ -34,10 +34,13 @@ pub struct Alternative {
 
 impl Alternative {
     pub fn from_parts<P: std::convert::AsRef<std::path::Path>>(
-        target: P, priority: i32
+        target: P,
+        priority: i32,
     ) -> Alternative {
-        Alternative{ target: std::path::PathBuf::from(target.as_ref()),
-                     priority }
+        Alternative {
+            target: std::path::PathBuf::from(target.as_ref()),
+            priority,
+        }
     }
 
     pub fn priority(&self) -> i32 {

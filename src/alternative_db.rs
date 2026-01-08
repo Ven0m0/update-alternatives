@@ -16,7 +16,7 @@
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY 
+// ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
 // DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 // (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 // LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -39,18 +39,21 @@ pub struct AlternativeDb {
 }
 
 impl AlternativeDb {
-    pub fn from_folder<P: std::convert::AsRef<std::path::Path>>(folder: P)
-        -> std::io::Result<AlternativeDb> {
+    pub fn from_folder<P: std::convert::AsRef<std::path::Path>>(
+        folder: P,
+    ) -> std::io::Result<AlternativeDb> {
         let folder_path = folder.as_ref();
         let children = match folder_path.read_dir() {
             Ok(c) => c,
             Err(e) => {
                 if e.kind() == std::io::ErrorKind::NotFound {
-                    return Ok(AlternativeDb{ table: AlternativeTable::new() });
+                    return Ok(AlternativeDb {
+                        table: AlternativeTable::new(),
+                    });
                 }
 
                 return Err(e);
-            },
+            }
         };
 
         let to_reserve = estimate_size(&children);
@@ -60,11 +63,15 @@ impl AlternativeDb {
             let entry = match child {
                 Ok(c) => c,
                 Err(e) => {
-                    eprintln!("update-alternatives: unable to read entry of \
-                              directory {}: {}", folder_path.display(), e);
+                    eprintln!(
+                        "update-alternatives: unable to read entry of \
+                              directory {}: {}",
+                        folder_path.display(),
+                        e
+                    );
 
                     continue;
-                },
+                }
             };
 
             let path = entry.path();
@@ -72,18 +79,20 @@ impl AlternativeDb {
             let name = String::from(match path.file_stem() {
                 Some(s) => s.to_string_lossy(),
                 None => {
-                    println!("update-alternatives: skipping entry {}...",
-                             path.display());
+                    println!("update-alternatives: skipping entry {}...", path.display());
 
                     continue;
-                },
+                }
             });
 
             let contents = match filesystem::read(&path) {
                 Ok(c) => c,
                 Err(e) => {
-                    eprintln!("update-alternatives: could not read file {}: {}",
-                              path.display(), e);
+                    eprintln!(
+                        "update-alternatives: could not read file {}: {}",
+                        path.display(),
+                        e
+                    );
 
                     continue;
                 }
@@ -92,19 +101,27 @@ impl AlternativeDb {
             let list: AlternativeList = match serde_json::from_str(&contents) {
                 Ok(l) => l,
                 Err(e) => {
-                    eprintln!("update-alternatives: unable to \
-                             deserialize {}: {}", path.display(), e);
+                    eprintln!(
+                        "update-alternatives: unable to \
+                             deserialize {}: {}",
+                        path.display(),
+                        e
+                    );
 
                     continue;
                 }
             };
 
-            println!("update-alternatives: loading alternative for {} with {} \
-                     entries...", name, list.num_links());
+            println!(
+                "update-alternatives: loading alternative for {} with {} \
+                     entries...",
+                name,
+                list.num_links()
+            );
             table.insert(name, list);
         }
 
-        Ok(AlternativeDb{ table })
+        Ok(AlternativeDb { table })
     }
 
     pub fn num_alternatives(&self) -> usize {
@@ -127,12 +144,12 @@ impl AlternativeDb {
         Some(&self.table[name])
     }
 
-    pub fn add_alternative(&mut self, name: &str,
-                           to_add: Alternative) -> bool {
+    pub fn add_alternative(&mut self, name: &str, to_add: Alternative) -> bool {
         if !self.has_alternatives(&name) {
             let path = format!("/usr/local/bin/{}", name);
 
-            self.table.insert(name.to_string(), AlternativeList::new(path));
+            self.table
+                .insert(name.to_string(), AlternativeList::new(path));
         }
 
         let list = self.table.get_mut(name).unwrap();
@@ -141,7 +158,9 @@ impl AlternativeDb {
     }
 
     pub fn remove_alternative<P: std::convert::AsRef<std::path::Path>>(
-        &mut self, name: &str, target: P
+        &mut self,
+        name: &str,
+        target: P,
     ) -> bool {
         if !self.has_alternatives(name) {
             return false;
@@ -152,8 +171,10 @@ impl AlternativeDb {
         list.remove_alternative(target)
     }
 
-    pub fn write_out<P: std::convert::AsRef<std::path::Path>>(&self, folder: P)
-        -> std::io::Result<usize> {
+    pub fn write_out<P: std::convert::AsRef<std::path::Path>>(
+        &self,
+        folder: P,
+    ) -> std::io::Result<usize> {
         let folder_path = folder.as_ref();
 
         if !folder_path.exists() {
@@ -162,7 +183,8 @@ impl AlternativeDb {
             }
         } else if !folder_path.is_dir() {
             return Err(std::io::Error::new(
-                std::io::ErrorKind::AlreadyExists, "path is not a directory"
+                std::io::ErrorKind::AlreadyExists,
+                "path is not a directory",
             ));
         }
 
@@ -172,8 +194,11 @@ impl AlternativeDb {
             let db_file = folder_path.join(name).with_extension("json");
 
             if let Err(e) = AlternativeDb::rename_existing(&db_file) {
-                eprintln!("update-alternatives: could not rename file {}: {}",
-                          db_file.display(), e);
+                eprintln!(
+                    "update-alternatives: could not rename file {}: {}",
+                    db_file.display(),
+                    e
+                );
                 continue;
             }
 
@@ -182,14 +207,14 @@ impl AlternativeDb {
                     written += n;
 
                     AlternativeDb::cleanup(&db_file);
-                },
+                }
                 Err(e) => {
                     if let Err(e) = AlternativeDb::recover(&db_file) {
                         return Err(e);
                     }
 
                     return Err(e);
-                },
+                }
             }
         }
 
@@ -216,8 +241,7 @@ impl AlternativeDb {
         std::fs::rename(link, &new_link)
     }
 
-    fn write_list(list: &AlternativeList,
-                  path: &std::path::Path) -> std::io::Result<usize> {
+    fn write_list(list: &AlternativeList, path: &std::path::Path) -> std::io::Result<usize> {
         let to_write = match serde_json::to_string(list) {
             Ok(s) => s,
             Err(e) => return Err(std::io::Error::from(e)),
@@ -228,15 +252,21 @@ impl AlternativeDb {
 
     fn cleanup(link: &std::path::Path) {
         if let Err(e) = AlternativeDb::remove_renamed(&link) {
-            eprintln!("update-alternatives: could not remove {}.old: {}",
-                      link.display(), e);
+            eprintln!(
+                "update-alternatives: could not remove {}.old: {}",
+                link.display(),
+                e
+            );
         }
     }
 
     fn recover(link: &std::path::Path) -> std::io::Result<()> {
         if let Err(e) = AlternativeDb::recover_backup(link) {
-            eprintln!("update-alternatives: could not recover {}.old: {}",
-                      link.display(), e);
+            eprintln!(
+                "update-alternatives: could not recover {}.old: {}",
+                link.display(),
+                e
+            );
 
             return Err(e);
         }
