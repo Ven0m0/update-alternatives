@@ -85,8 +85,8 @@ impl AlternativeDb {
                 }
             });
 
-            let contents = match filesystem::read(&path) {
-                Ok(c) => c,
+            let file = match std::fs::File::open(&path) {
+                Ok(f) => f,
                 Err(e) => {
                     eprintln!(
                         "update-alternatives: could not read file {}: {}",
@@ -98,7 +98,7 @@ impl AlternativeDb {
                 }
             };
 
-            let list: AlternativeList = match serde_json::from_str(&contents) {
+            let list: AlternativeList = match serde_json::from_reader(file) {
                 Ok(l) => l,
                 Err(e) => {
                     eprintln!(
@@ -145,7 +145,7 @@ impl AlternativeDb {
     }
 
     pub fn add_alternative(&mut self, name: &str, to_add: Alternative) -> bool {
-        if !self.has_alternatives(&name) {
+        if !self.has_alternatives(name) {
             let path = format!("/usr/local/bin/{}", name);
 
             self.table
@@ -178,9 +178,7 @@ impl AlternativeDb {
         let folder_path = folder.as_ref();
 
         if !folder_path.exists() {
-            if let Err(e) = filesystem::create_dir(folder_path) {
-                return Err(e);
-            }
+            filesystem::create_dir(folder_path)?;
         } else if !folder_path.is_dir() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::AlreadyExists,
@@ -209,9 +207,7 @@ impl AlternativeDb {
                     AlternativeDb::cleanup(&db_file);
                 }
                 Err(e) => {
-                    if let Err(e) = AlternativeDb::recover(&db_file) {
-                        return Err(e);
-                    }
+                    AlternativeDb::recover(&db_file)?;
 
                     return Err(e);
                 }
@@ -223,9 +219,7 @@ impl AlternativeDb {
 
     pub fn write_links(&self) -> std::io::Result<()> {
         for list in self.table.values() {
-            if let Err(e) = list.make_symlink() {
-                return Err(e);
-            }
+            list.make_symlink()?;
         }
 
         Ok(())
@@ -242,16 +236,13 @@ impl AlternativeDb {
     }
 
     fn write_list(list: &AlternativeList, path: &std::path::Path) -> std::io::Result<usize> {
-        let to_write = match serde_json::to_string(list) {
-            Ok(s) => s,
-            Err(e) => return Err(std::io::Error::from(e)),
-        };
-
-        filesystem::write(to_write, path)
+        let file = std::fs::File::create(path)?;
+        serde_json::to_writer(&file, list).map_err(std::io::Error::from)?;
+        file.metadata().map(|m| m.len() as usize)
     }
 
     fn cleanup(link: &std::path::Path) {
-        if let Err(e) = AlternativeDb::remove_renamed(&link) {
+        if let Err(e) = AlternativeDb::remove_renamed(link) {
             eprintln!(
                 "update-alternatives: could not remove {}.old: {}",
                 link.display(),
@@ -285,7 +276,7 @@ impl AlternativeDb {
     }
 
     fn recover_backup(link: &std::path::Path) -> std::io::Result<()> {
-        let renamed = link.with_extension("json");
+        let renamed = link.with_extension("json.old");
 
         std::fs::rename(&renamed, link)
     }
@@ -294,5 +285,5 @@ impl AlternativeDb {
 fn estimate_size<I: std::iter::Iterator>(iter: &I) -> usize {
     let (lower_bound, upper_bound) = iter.size_hint();
 
-    upper_bound.unwrap_or_else(|| lower_bound)
+    upper_bound.unwrap_or(lower_bound)
 }

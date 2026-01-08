@@ -49,11 +49,12 @@ impl AlternativeList {
         self.links.len()
     }
 
+    fn best_alternative(&self) -> Option<&Alternative> {
+        self.links.iter().max_by_key(|l| l.priority())
+    }
+
     pub fn current_target(&self) -> Option<&std::path::Path> {
-        self.links
-            .iter()
-            .max_by_key(|l| l.priority())
-            .map(|l| l.target())
+        self.best_alternative().map(|l| l.target())
     }
 
     pub fn links(&self) -> &[Alternative] {
@@ -61,7 +62,7 @@ impl AlternativeList {
     }
 
     pub fn make_symlink(&self) -> std::io::Result<bool> {
-        let (target, priority) = match self.links.iter().max_by_key(|l| l.priority()) {
+        let (target, priority) = match self.best_alternative() {
             Some(l) => (l.target(), l.priority()),
             None => return Ok(false),
         };
@@ -75,14 +76,10 @@ impl AlternativeList {
                 }
             }
 
-            if let Err(e) = filesystem::remove(&self.path) {
-                return Err(e);
-            }
+            filesystem::remove(&self.path)?;
         }
 
-        if let Err(e) = filesystem::symlink(target, &self.path) {
-            return Err(e);
-        }
+        filesystem::symlink(target, &self.path)?;
 
         println!(
             "update-alternatives: created symlink from {} to {} with \
@@ -133,14 +130,10 @@ impl AlternativeList {
 
 impl std::fmt::Display for AlternativeList {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if let Err(e) = writeln!(formatter, "alternatives for {}:", self.path.display()) {
-            return Err(e);
-        }
+        writeln!(formatter, "alternatives for {}:", self.path.display())?;
 
         for alternative in self.links.iter() {
-            if let Err(e) = writeln!(formatter, "    {}", alternative) {
-                return Err(e);
-            }
+            writeln!(formatter, "    {}", alternative)?;
         }
 
         Ok(())

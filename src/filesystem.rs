@@ -26,8 +26,6 @@
 
 extern crate std;
 
-use std::io::{Read, Write};
-
 pub fn remove<P: std::convert::AsRef<std::path::Path>>(path: P) -> std::io::Result<()> {
     let concrete: &std::path::Path = path.as_ref();
 
@@ -61,41 +59,6 @@ pub fn symlink<P: std::convert::AsRef<std::path::Path>, Q: std::convert::AsRef<s
     std::os::windows::fs::symlink_file(source, destination)
 }
 
-pub fn read<P: std::convert::AsRef<std::path::Path>>(path: P) -> std::io::Result<String> {
-    let mut file = match std::fs::File::open(path) {
-        Ok(f) => f,
-        Err(e) => return Err(e),
-    };
-
-    let mut buffer = String::new();
-
-    match file.read_to_string(&mut buffer) {
-        Ok(_) => Ok(buffer),
-        Err(e) => Err(e),
-    }
-}
-
 pub fn create_dir<P: std::convert::AsRef<std::path::Path>>(path: P) -> std::io::Result<()> {
     std::fs::create_dir_all(path)
-}
-
-pub fn write<S, P: std::convert::AsRef<std::path::Path>>(
-    contents: S,
-    path: P,
-) -> std::io::Result<usize>
-where
-    String: std::convert::From<S>,
-{
-    let to_write = String::from(contents);
-    let len = to_write.len();
-
-    let mut file = match std::fs::File::create(path) {
-        Ok(f) => f,
-        Err(e) => return Err(e),
-    };
-
-    match file.write_all(to_write.as_bytes()) {
-        Ok(_) => Ok(len),
-        Err(e) => Err(e),
-    }
 }

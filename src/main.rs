@@ -77,8 +77,8 @@ fn escalate_privileges() -> std::io::Result<()> {
 
 fn main() {
     let use_gui_flag = std::env::args().any(|a| a == "--gui");
-    let euid = nix::unistd::geteuid();
-    if !euid.is_root() && !use_gui_flag {
+    let is_root = unsafe { libc::geteuid() } == 0;
+    if !is_root && !use_gui_flag {
         if let Err(e) = escalate_privileges() {
             eprintln!(
                 "update-alternatives: must be run as root (auto-escalation failed: {})",
@@ -790,7 +790,7 @@ fn app() -> clap::Command {
         .propagate_version(true)
 }
 
-static ABOUT: &'static str = "Manages symlinks to be placed in /usr/local/bin. Data is stored in \
+static ABOUT: &str = "Manages symlinks to be placed in /usr/local/bin. Data is stored in \
     /etc/alternatives for persistence between invocations. Provides similar \
     functionality to Debian's update-alternatives, but with a slightly \
     different interface. Alternatives are selected by comparing their assigned \
@@ -798,20 +798,17 @@ static ABOUT: &'static str = "Manages symlinks to be placed in /usr/local/bin. D
     Example usage to use 'vim' to open 'nvim'': \
     \nsudo update-alternatives add -n vim -t /usr/bin/nvim -w 100 ";
 
-static LIST_ABOUT: &'static str = "Lists all alternatives for <NAME> and their assigned priority.";
+static LIST_ABOUT: &str = "Lists all alternatives for <NAME> and their assigned priority.";
 
-static ADD_ABOUT: &'static str =
-    "Adds or modifies an alternative for <NAME> that points to <TARGET> with \
+static ADD_ABOUT: &str = "Adds or modifies an alternative for <NAME> that points to <TARGET> with \
     priority <WEIGHT>. If the database is modified, requires read/write access \
     to /etc/alternatives and /usr/local/bin.";
 
-static REMOVE_ABOUT: &'static str =
-    "If one exists, removes the alternative for <NAME> that points to \
+static REMOVE_ABOUT: &str = "If one exists, removes the alternative for <NAME> that points to \
     <TARGET>. If the database is modified, requires read/write access to \
     /etc/alternatives and /usr/local/bin.";
 
-static SYNC_ABOUT: &'static str =
-    "Rewrites all symlinks in /usr/local/bin based on the current state of \
+static SYNC_ABOUT: &str = "Rewrites all symlinks in /usr/local/bin based on the current state of \
     /etc/alternatives without modifying the database. Useful for package \
     manager hooks (e.g., pacman libalpm hooks) after installs, upgrades, or \
     removals.";
