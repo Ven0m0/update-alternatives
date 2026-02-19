@@ -4,7 +4,7 @@ version = "0.6.0"
 authors = ["gregjm@umich.edu", "git@fthomys.me"]
 
 [dependencies]
-clap = { version = "4.5.57", features = ["cargo"] }
+clap = { version = "4.5.60", features = ["cargo"] }
 libc = "0.2"
 serde = "1.0"
 serde_derive = "1.0.228"
